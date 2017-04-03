@@ -10,4 +10,6 @@ use run_analysis.R to read and clean raw data.
 
 refer to the codebook for the name of variable produced.
 
+Note that the analysis is using tidyverse package to produce tidy data
+
 
