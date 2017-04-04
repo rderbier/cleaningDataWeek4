@@ -53,4 +53,4 @@ allMeanAndStd<-bind_rows(trainMeanAndStd,testMeanAndStd)
 ## create summary data mean of measures group by activity name and then by subject
 summaryData <- allMeanAndStd %>% group_by(activityName,subject) %>% summarize_each(funs(mean))
 
-
+write.table(summaryData, "summarydata.txt", row.name = FALSE)
