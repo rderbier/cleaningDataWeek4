@@ -1,51 +1,56 @@
 ## get features names
-features<-read.csv("UCI HAR Dataset/features.txt",sep=" ",header=FALSE)
-fnames<-features[,2]
+features<-readLines("UCI HAR Dataset/features.txt")
+## use the whole line including the number as some labels are duplicates !
+## clean names
+fnames<-gsub("[(,), ]","",features)
+
 
 ## find features for mean and std
-selectedColumns<-grep (".*(-mean|-std).*",fnames,,value=TRUE)
+
 ## read activity lookup
-activityLookup<-read.table("UCI HAR Dataset/activity_labels.txt",quote="\"", header=FALSE, sep=" ")
+activityLookup<-read_delim("UCI HAR Dataset/activity_labels.txt",quote="\"",  col_names=c("activityID","activityName"), delim=" ", col_types="cc")
 
 ## read the train data
-train<-read.fwf("UCI HAR Dataset/train/X_train.txt", widths=rep(16,561))
+
+train<-read_fwf("UCI HAR Dataset/train/X_train.txt", fwf_widths(rep(16,561)))
 ## set column names
 names(train)<-fnames
 
 ## keep only our columns for mean and std information
-trainMeanAndStd=train[,selectedColumns]
-## clean names
-names(trainMeanAndStd)<-gsub("-","",names(trainMeanAndStd))
-names(trainMeanAndStd)<-gsub("\\(\\)","",names(trainMeanAndStd))
+trainMeanAndStd<-select(train,matches("(.)*(-mean|-std)(.)*"))
 
-## add subject 
-subjects<-read.table("UCI HAR Dataset/train/subject_train.txt",quote="\"", header=FALSE)
-names(subjects)<-c('subject')
-trainMeanAndStd<-cbind(subjects,trainMeanAndStd)
 
 ## add activity
-activityLookup<-read.table("UCI HAR Dataset/activity_labels.txt",quote="\"", header=FALSE, sep=" ")
-activities<-merge(activities,activityLookup)
-names(activities)<-c('activityID','activity')
-trainMeanAndStd<-cbind(trainMeanAndStd,activities[,"activity"])
+activities<-read_table("UCI HAR Dataset/train/y_train.txt", col_names = "activityID", col_types="c")
+activities<-left_join(activities,activityLookup,by="activityID")
+trainMeanAndStd<-bind_cols(activities,trainMeanAndStd);
+## add subject 
+subjects<-read_table("UCI HAR Dataset/train/subject_train.txt", col_names = "subject", col_types="c")
+trainMeanAndStd<-bind_cols(subjects,trainMeanAndStd);
 
-## same ogic for test
-test<-read.fwf("UCI HAR Dataset/test/X_test.txt", widths=rep(16,561))
+
+
+## same logic for test
+test<-read_fwf("UCI HAR Dataset/test/X_test.txt", fwf_widths(rep(16,561)))
 ## set column names
 names(test)<-fnames
 ## keep only our columns for mean and std information
-testMeanAndStd<-test[,selectedColumns]
-## clean names
-names(testMeanAndStd)<-gsub("-","",names(testMeanAndStd))
-names(testMeanAndStd)<-gsub("\\(\\)","",names(testMeanAndStd))
+testMeanAndStd<-select(test,matches("(.)*(-mean|-std)(.)*"))
 
+## add activity
+activities<-read_table("UCI HAR Dataset/test/y_test.txt", col_names = "activityID", col_types="c")
+activities<-left_join(activities,activityLookup,by="activityID")
+testMeanAndStd<-bind_cols(activities,testMeanAndStd);
 ## add subject 
-subjects<-read.table("UCI HAR Dataset/test/subject_test.txt",quote="\"", header=FALSE)
-names(subjects)<-c('subject')
-testMeanAndStd<-cbind(subjects,testMeanAndStd)
+subjects<-read_table("UCI HAR Dataset/test/subject_test.txt",col_names = "subject", col_types="c")
+testMeanAndStd<-bind_cols(subjects,testMeanAndStd);
 
-activities<-read.csv("UCI HAR Dataset/test/y_test.txt",quote="\"", header=FALSE)
 
-activities<-merge(activities,activityLookup)
-names(activities)<-c('activityID','activity')
-testMeanAndStd<-cbind(activities[,"activity",drop=FALSE],testMeanAndStd)
+## merge all rows
+
+allMeanAndStd<-bind_rows(trainMeanAndStd,testMeanAndStd)
+
+## create summary data mean of measures group by activity name and then by subject
+summaryData <- allMeanAndStd %>% group_by(activityName,subject) %>% summarize_each(funs(mean))
+
+
